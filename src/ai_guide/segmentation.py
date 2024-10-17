@@ -19,12 +19,13 @@ def compute_adj_mat(triangles):
     adj_list = np.unique(adj_list, axis=0)
     return adj_list
 
-def remove_background(pcd: o3d.geometry.PointCloud, distance_threshold=20) -> o3d.geometry.PointCloud:
+def remove_background(pcd: o3d.geometry.PointCloud, distance_threshold=30) -> o3d.geometry.PointCloud:
     points = np.asarray(pcd.points)
-    
+
+    points = points[points[:, 2] <= 585]
     max_z = np.max(points[:, 2])
 
-    max_z_below = max_z - 2.0
+    max_z_below = max_z - 10.0
 
     points = np.asarray(pcd.points)
     normals = np.asarray(pcd.normals)
@@ -115,15 +116,7 @@ def segment_plane(mesh: o3d.geometry.TriangleMesh, keypoint: np.ndarray, similar
     source_nodes = scipy.sparse.csgraph.depth_first_order(csr_matrix - result.flow, idx_source)[0]
     source_nodes[source_nodes >= num_vertices] = num_vertices - 1
     
-    print(source_nodes)
-    print(np.max(source_nodes), np.min(source_nodes))
-
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = mesh.vertices
-    pcd.normals = mesh.vertex_normals
-
-    seg = mesh.select_by_index(source_nodes[1:])
-    return seg
+    return source_nodes[1:]
     pass
 
 

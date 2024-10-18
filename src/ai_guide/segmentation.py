@@ -116,7 +116,23 @@ def segment_plane(mesh: o3d.geometry.TriangleMesh, keypoint: np.ndarray, similar
     source_nodes = scipy.sparse.csgraph.depth_first_order(csr_matrix - result.flow, idx_source)[0]
     source_nodes[source_nodes >= num_vertices] = num_vertices - 1
     
-    return source_nodes[1:]
+    index = source_nodes[1:]
+
+    mesh_seg = mesh.select_by_index(index)
+    seg_points = np.array(mesh_seg.vertices)
+    seg_normals = np.array(mesh_seg.vertex_normals)
+    mean_normal = np.mean(seg_normals, axis=0)
+    mean_normal = mean_normal / np.linalg.norm(mean_normal)
+
+    # calculate the distance between the plane and points
+    p = vertices - seg_points[0, :]
+    distance = np.dot(p, mean_normal)
+    index2 = np.where(distance >=0)[0]
+
+    index = np.union1d(index, index2)
+    index = np.unique(index)    
+
+    return index
     pass
 
 

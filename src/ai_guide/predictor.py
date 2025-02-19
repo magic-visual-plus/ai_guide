@@ -30,7 +30,7 @@ class Predictor(object):
         normals = []
         for r in box_result:
             for ibox, box in enumerate(r.boxes):
-                if box.conf > 0.2:
+                if box.conf > 0.8:
                     num_boxes += 1
                     x1, y1, x2, y2 = box.xyxy.cpu().numpy().astype(int).flatten()
                     # enlarge box

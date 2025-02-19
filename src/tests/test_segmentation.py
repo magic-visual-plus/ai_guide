@@ -33,8 +33,8 @@ class TestSegmentation(unittest.TestCase):
         mesh = o3d.io.read_triangle_mesh("data/test2_mesh.ply")
         points = np.asarray(mesh.vertices)
         keypoint = ai_guide.segmentation.find_keypoint(points)
-        seg = ai_guide.segmentation.segment_plane(mesh, keypoint)
-
+        index = ai_guide.segmentation.segment_plane(mesh, keypoint)
+        seg = mesh.select_by_index(index)
         # paint color by index
         o3d.io.write_triangle_mesh("data/test2_seg.ply", seg)
 

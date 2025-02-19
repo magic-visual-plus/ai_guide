@@ -13,6 +13,7 @@ class TestSurface(unittest.TestCase):
         mesh = ai_guide.surface.create_surface_from_cloud_points(
             pcd, 0.5
         )
+
         o3d.io.write_triangle_mesh("data/test2_mesh.ply", mesh)
         pass
 

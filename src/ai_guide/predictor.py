@@ -5,7 +5,7 @@ import torch
 import numpy as np
 import open3d as o3d
 import time
-
+from ai_guide import path_utils
 
 class Predictor(object):
     def __init__(self, det_model_file, pcd_model_file):
@@ -55,6 +55,9 @@ class Predictor(object):
                     subpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=10))
                     start = time.time()
                     subpcd_index = model_utils.predict_pcd(subpcd, self.pcd_model, self.device)
+                    subpcd_points = np.asarray(subpcd.points)
+                    subpcd_path = path_utils.find_path(subpcd_points[subpcd_index])
+                    # subpcd_index = subpcd_index[subpcd_path]
                     cost_pcd = time.time() - start
                     print("Time taken for predict: ", cost_pcd)
                     subpcd_normals = np.asarray(subpcd.normals)

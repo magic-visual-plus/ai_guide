@@ -13,7 +13,9 @@ license = { text = "MIT" }
 dependencies = [
     "numpy",
     "scipy",
-    "open3d"
+    "open3d",
+    "fpsample",
+    "ultralytics",
 ]
 requires-python = ">=3.6"
 

@@ -46,13 +46,13 @@ class ResNetBlock(nn.Module):
 class PointNetEx(nn.Module):
     def __init__(self, input_size):
         super(PointNetEx, self).__init__()
-        self.hidden_size = 128
+        self.hidden_size = 256
         self.attention_head_size = 16
         self.embedding_x = nn.Linear(input_size, self.hidden_size)
         self.embedding_x_sampled = nn.Linear(input_size, self.hidden_size)
 
         self.encoder1 = simple_transformer.MultiLayerTransformer(
-            num_layers=4,
+            num_layers=6,
             hidden_size=self.hidden_size,
             attention_head_size=self.attention_head_size,
             reduction=None,
@@ -66,7 +66,7 @@ class PointNetEx(nn.Module):
             use_structure_matrix=False
         )
         self.encoder2 = simple_transformer.MultiLayerTransformer(
-            num_layers=4,
+            num_layers=6,
             hidden_size=self.hidden_size,
             attention_head_size=self.attention_head_size,
             reduction=None,
@@ -80,7 +80,7 @@ class PointNetEx(nn.Module):
             use_structure_matrix=False
         )
         self.decoder = simple_transformer.MultiLayerTransformer(
-            num_layers=4,
+            num_layers=6,
             hidden_size=self.hidden_size,
             attention_head_size=self.attention_head_size,
             reduction=None,

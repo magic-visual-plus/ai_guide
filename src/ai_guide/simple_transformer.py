@@ -17,7 +17,7 @@ class SelfAttention(nn.Module):
         self.key = nn.Linear(hidden_size, self.all_head_size)
         self.value = nn.Linear(hidden_size, self.all_head_size)
 
-        self.dropout = nn.Dropout(attention_probs_dropout_prob)
+        self.dropout = nn.Dropout(attention_probs_dropout_prob, inplace=False)
 
         if use_structure_matrix:
             self.structure_map_query = nn.Sequential(
@@ -117,7 +117,7 @@ class TransformerLayer(nn.Module):
         self.intermediate_act_fn = nn.GELU()
         self.dense_output = nn.Linear(intermediate_size, hidden_size)
         self.layer_norm_output = nn.LayerNorm(hidden_size)
-        self.dropout_output = nn.Dropout(hidden_dropout_prob)
+        self.dropout_output = nn.Dropout(hidden_dropout_prob, inplace=True)
 
     def forward(
         self,
@@ -132,8 +132,9 @@ class TransformerLayer(nn.Module):
         )
         
         attention_output, attention_scores = self_attention_outputs
-        x_intermediate = self.intermediate_act_fn(self.intermediate(attention_output))
-        output = self.dense_output(x_intermediate)
+        output = self.intermediate(attention_output)
+        output = self.intermediate_act_fn(output)
+        output = self.dense_output(output)
         output = self.dropout_output(output)
         output = self.layer_norm_output(output + attention_output)
         return output, attention_scores

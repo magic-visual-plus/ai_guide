@@ -7,11 +7,11 @@ import numpy as np
 import torch
 from ai_guide import model_utils
 from ai_guide import models
-from ai_guide import predictor
+from ai_guide import detect_path_predictor
 import time
 
 def run_infer(yolo_model_file, pcd_model_file, input_img_file, input_pcd_file, output_file, output_normal_file):
-    index_predictor = predictor.Predictor(yolo_model_file, pcd_model_file)
+    index_predictor = detect_path_predictor.Predictor(yolo_model_file, pcd_model_file)
 
     frame = cv2.imread(input_img_file)
     pcd = o3d.io.read_point_cloud(input_pcd_file)

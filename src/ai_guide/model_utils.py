@@ -37,6 +37,32 @@ def predict_pcd(pcd, model, device, threshold=0.5):
     return pred_index, proba.cpu().numpy()
 
 
+def predict_pcd_pt(pcd, model, device, threshold=0.1):
+    selected_index = pcd_utils.select_points(pcd)
+    # selected_index = np.arange(len(pcd.points))
+    pcd_selected = pcd.select_by_index(selected_index)
+    x, feat = pcd_utils.generate_model_data2(pcd_selected, sample_size=512)
+
+    x = torch.from_numpy(x).float()
+    feat = torch.from_numpy(feat).float()
+
+    x_batch, feat_batch, _, offset_batch = datasets.collate_fn_pt([(x, feat, [])])
+    
+    with torch.no_grad():
+        x_batch = x_batch.to(device)
+        feat_batch = feat_batch.to(device)
+        offset_batch = offset_batch.to(device)
+        x_logits = model(x_batch, feat_batch, offset_batch)
+        pass
+    x_logits = x_logits.squeeze(0)
+    proba = torch.sigmoid(x_logits)
+    pred_index = proba > threshold
+    pred_index = pred_index.cpu().numpy()
+
+    pred_index = selected_index[pred_index]
+
+    return pred_index, proba.cpu().numpy()
+
 def predict_pcd_batch(pcds, model, device, threshold=0.5, batch_size=32):
     pred_indices = []
     probas = []

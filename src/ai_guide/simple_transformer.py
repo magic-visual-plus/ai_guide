@@ -117,7 +117,7 @@ class TransformerLayer(nn.Module):
         self.intermediate_act_fn = nn.GELU()
         self.dense_output = nn.Linear(intermediate_size, hidden_size)
         self.layer_norm_output = nn.LayerNorm(hidden_size)
-        self.dropout_output = nn.Dropout(hidden_dropout_prob, inplace=True)
+        self.dropout_output = nn.Dropout(hidden_dropout_prob)
 
     def forward(
         self,

@@ -8,15 +8,17 @@ from . import models
 logger = loguru.logger
 
 def run_train(data_path, device, num_epochs=100):
-    train_dataset = datasets.PointNetDataset(os.path.join(data_path, 'train'), size=512, voxel_size=0)
-    val_dataset = datasets.PointNetDataset(os.path.join(data_path, 'val'), is_test=True, voxel_size=0)
+    train_dataset = datasets.PointTransformerDataset(os.path.join(data_path, 'train'), size=512, voxel_size=0)
+    val_dataset = datasets.PointTransformerDataset(os.path.join(data_path, 'val'), is_test=True, voxel_size=0)
     # train_dataset = datasets.PointNetDatasetPickled(os.path.join(data_path, 'train'), size=256)
     # val_dataset = datasets.PointNetDatasetPickled(os.path.join(data_path, 'val'), is_test=True)
 
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=2, shuffle=True, collate_fn=datasets.collate_fn, num_workers=16)
-    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=2, shuffle=False, collate_fn=datasets.collate_fn, num_workers=16)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=2, shuffle=True, collate_fn=datasets.collate_fn_pt, num_workers=16)
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=2, shuffle=False, collate_fn=datasets.collate_fn_pt, num_workers=16)
 
-    model = models.PointNetEx(input_size=6)
+    model = models.PointTransformerPointcept(input_size=6)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.9)
     warmup_epochs = 20
@@ -29,26 +31,22 @@ def run_train(data_path, device, num_epochs=100):
             optimizer.param_groups[0]['lr'] = 1e-4 * min((iepoch+1) / warmup_epochs, 1.0)
             pass
 
-        for i, (x, x_sampled, group_index, knn_index, labeled, mask, mask_sampled) in enumerate(train_loader):
+        for i, (x, feat, label, offset) in enumerate(train_loader):
             x = x.to(device)
-            x_sampled = x_sampled.to(device)
-            group_index = group_index.to(device)
-            knn_index = knn_index.to(device)
-            labeled = labeled.to(device)
-            mask = mask.to(device)
-            mask_sampled = mask_sampled.to(device)
-            logits = model(x, x_sampled, group_index, knn_index, mask_sampled)
+            feat = feat.to(device)
+            offset = offset.to(device)
+            label = label.to(device)
+            logits = model(x, feat, offset)
             proba = torch.sigmoid(logits)
-            mask_low_proba = ((labeled == 1) & (proba <= 0.9)) | ((labeled == 0) & (proba > 0.1))
+            mask_low_proba = ((label == 1) & (proba <= 0.9)) | ((label == 0) & (proba > 0.1))
             # mask[mask_high_proba] = 0
             # loss = torch.nn.functional.binary_cross_entropy_with_logits(
             #     logits, labeled, reduction='none', pos_weight=torch.tensor([10.0]).to(device))
             # if mask.sum() == 0:
             #     continue
             # loss = (loss * mask).sum() / mask.sum()
-            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, labeled, pos_weight=torch.tensor([10.0]).to(device), reduction='none')
-            loss = loss * mask
-            loss = loss.sum() / mask.sum()
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, label, pos_weight=torch.tensor([10.0]).to(device), reduction='none')
+            loss = loss.mean()
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -61,27 +59,29 @@ def run_train(data_path, device, num_epochs=100):
         ious = []
 
         with torch.no_grad():
-            for i, (x, x_sampled, group_index, knn_index, labeled, mask, mask_sampled) in enumerate(val_loader):
+            for i, (x, feat, label, offset) in enumerate(train_loader):
                 x = x.to(device)
-                x_sampled = x_sampled.to(device)
-                group_index = group_index.to(device)
-                knn_index = knn_index.to(device)
-                labeled = labeled.to(device)
-                mask = mask.to(device)
-                mask_sampled = mask_sampled.to(device)
-
-                logits = model(x, x_sampled, group_index, knn_index, mask_sampled)
-                loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, labeled, reduction='none')
-                loss = (loss * mask).sum() / mask.sum()
-
+                feat = feat.to(device)
+                offset = offset.to(device)
+                label = label.to(device)
+                logits = model(x, feat, offset)
+                proba = torch.sigmoid(logits)
+                mask_low_proba = ((label == 1) & (proba <= 0.9)) | ((label == 0) & (proba > 0.1))
+                # mask[mask_high_proba] = 0
+                # loss = torch.nn.functional.binary_cross_entropy_with_logits(
+                #     logits, labeled, reduction='none', pos_weight=torch.tensor([10.0]).to(device))
+                # if mask.sum() == 0:
+                #     continue
+                # loss = (loss * mask).sum() / mask.sum()
+                loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, label, pos_weight=torch.tensor([10.0]).to(device), reduction='none')
+                loss = loss.mean()
                 proba = torch.sigmoid(logits)
                 pred = (proba>0.5).float()
-                pred = pred * mask
-                intersection = (pred * labeled).sum()
-                union = (pred + labeled).sum() - intersection
+                intersection = (pred * label).sum()
+                union = (pred + label).sum() - intersection
                 iou = intersection / union
                 ious.append(iou.item())
-                total_count += labeled.shape[0]
+                total_count += label.shape[0]
                 total_loss += loss.item()
                 pass
 

@@ -44,7 +44,7 @@ def find_path(points):
     # find a path that connects as many points as possible
 
     # first find minimum spanning tree
-    k = 500
+    k = 2000
     dists = cdist(points, points)
     # make down diag zero
     # dists = np.triu(dists, 1)
@@ -52,7 +52,7 @@ def find_path(points):
     dists_order = np.argpartition(dists, k, axis=1)[:, :k]
     rows = np.tile(np.arange(len(points)), (k, 1)).T
     kth = dists[rows, dists_order].max(axis=1, keepdims=True)
-    dists[dists >= kth] = 0
+    # dists[dists >= kth] = 0
     # dists_ = np.zeros_like(dists)
     # dists_[rows, dists_order] = dists[rows, dists_order]
     # dists = dists_

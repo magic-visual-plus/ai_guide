@@ -48,7 +48,8 @@ def group2(x, x_sampled):
         groups[n].append(i)
         pass
     
-    group_index = np.zeros((x_sampled.shape[0], bucket_size), dtype=np.int32)
+    # group_index = np.zeros((x_sampled.shape[0], bucket_size), dtype=np.int32)
+    group_index = -np.ones((x_sampled.shape[0], bucket_size), dtype=np.int32)
 
     tree = scipy.spatial.cKDTree(x)
     for ig, g in enumerate(groups):
@@ -111,8 +112,10 @@ def generate_model_data(pcd, sample_size=512):
     if x.shape[0] < sample_size:
         sample_size = x.shape[0]
         pass
-    # index_sampled = fpsample.fps_sampling(x, sample_size)
-    index_sampled = fpsample.fps_npdu_sampling(x, sample_size)
+    index_sampled = fpsample.fps_sampling(x, sample_size)
+    # np.random.seed(0)
+    # index_sampled = np.random.choice(x.shape[0], sample_size, replace=False)
+    # index_sampled = fpsample.fps_npdu_sampling(x, sample_size)
 
     x_sampled = x[index_sampled]
     x_sampled_color = x_color[index_sampled]
@@ -131,6 +134,17 @@ def generate_model_data(pcd, sample_size=512):
 
     return x, x_sampled, group_index, knn_index
     pass
+
+def generate_model_data2(pcd, sample_size=512):
+    x = np.asarray(pcd.points).astype(np.float32)
+    x_color = np.asarray(pcd.colors).astype(np.float32)
+    
+    feat = np.concatenate([x, x_color], axis=1)
+    x = x - x.mean(axis=0, keepdims=True)
+    feat = (feat - feat.mean(axis=0, keepdims=True)) / feat.std(axis=0, keepdims=True)
+    
+
+    return x, feat
 
 
 def replace_nan(pcd, v):
@@ -185,6 +199,19 @@ def split_pcd(pcd, sample_size=50):
 
     return pcd_down, trace
 
+
+def transform(pcd):
+    points = np.asarray(pcd.points)
+
+    points = (points - points.mean(axis=0, keepdims=True))
+    r = scipy.spatial.transform.Rotation.random().as_matrix()
+    b = np.random.uniform(-100, 100, 3)
+    points = (r @ points.T).T + b
+
+    pcd.points = o3d.utility.Vector3dVector(points)
+
+    return pcd
+    pass
 
 def remove_background_plane(pcd):
     pcd_down = pcd.voxel_down_sample(voxel_size=10)

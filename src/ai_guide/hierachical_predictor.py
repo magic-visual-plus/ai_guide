@@ -5,80 +5,67 @@ import torch
 import numpy as np
 import open3d as o3d
 import time
-import scipy
 from ai_guide import path_utils
-from ai_guide import pcd_utils
-from ai_guide import path_utils
+import hq_seg.predictor
 
-class HierachicalPredictor(object):
-    def __init__(self, pcd_model_file1, pcd_model_file2):
-        self.pcd_model1 = models.PointNetEx(input_size=6)
-        self.pcd_model1.load_state_dict(torch.load(pcd_model_file1))
-        self.pcd_model2 = models.PointNetEx(input_size=6)
-        self.pcd_model2.load_state_dict(torch.load(pcd_model_file2))
+class DetectPathPredictor(object):
+    def __init__(self, seg_model_file, pcd_model_file):
+        self.seg_model = hq_seg.predictor.Pre
+        self.pcd_model = models.PointNetEx(input_size=6)
+        self.pcd_model.load_state_dict(torch.load(pcd_model_file))
 
         if torch.cuda.is_available():
             self.device = torch.device("cuda:0")
             pass
 
-        self.pcd_model1.to(self.device)
-        self.pcd_model1.eval()
-        self.pcd_model2.to(self.device)
-        self.pcd_model2.eval()
+        self.pcd_model.to(self.device)
         pass
 
-    def predict(self, pcd):
-        select_index = pcd_utils.select_points(pcd)
-        pcd = pcd.select_by_index(select_index)
-        pcd_down, _, trace = pcd.voxel_down_sample_and_trace(voxel_size=50, min_bound=pcd.get_min_bound(), max_bound=pcd.get_max_bound())
+    def predict(self, img, pcd):
+        start = time.time()
+        box_result = self.det_model(img)
+        cost_det = time.time() - start
 
-        index, proba = model_utils.predict_pcd(pcd_down, self.pcd_model1, self.device, 0.5)
-        # index = np.argsort(proba)[::-1]
-        # index = index[:35]
-        # index = index.astype(int)
-        print(len(index))
-        
-        predict_indices = []
-        points = np.asarray(pcd.points)
-        points_down = np.asarray(pcd_down.points)
-        tree = scipy.spatial.cKDTree(points)
-        subpcds = []
-        for i, idx in enumerate(index):
-            trace_idx = trace[idx]
-            if len(trace_idx) < 10000:
-                mean = np.mean(points[trace_idx], axis=0)
-                qindex = tree.query(mean, k=10000)[1]
-                idx_set = set(trace_idx)
-                for j in qindex:
-                    if j not in idx_set:
-                        trace_idx.append(j)
+        num_boxes = 0
+        indices = []
+        normals = []
+        for r in box_result:
+            for ibox, box in enumerate(r.boxes):
+                if box.conf > 0.8:
+                    num_boxes += 1
+                    x1, y1, x2, y2 = box.xyxy.cpu().numpy().astype(int).flatten()
+                    # enlarge box
+                    box_width = x2 - x1
+                    box_height = y2 - y1
+                    pad = 20
+                    x1 = int(max(0, x1 - pad))
+                    x2 = int(min(img.shape[1], x2 + pad))
+                    y1 = int(max(0, y1 - pad))
+                    y2 = int(min(img.shape[0], y2 + pad))
+
+                    subframe = img[y1:y2, x1:x2]
+                    
+                    point_indices = []
+                    for y in range(y1, y2):
+                        xrange = np.arange(x1, x2)
+                        point_indices.append(xrange + y * img.shape[1])
                         pass
-                    if len(trace_idx) >= 10000:
-                        break
+                    point_indices = np.concatenate(point_indices)
+                    subpcd = pcd.select_by_index(point_indices)
+                    
+                    subpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=10))
+                    start = time.time()
+                    subpcd_index = model_utils.predict_pcd(subpcd, self.pcd_model, self.device)
+                    subpcd_points = np.asarray(subpcd.points)
+                    subpcd_path = path_utils.find_path(subpcd_points[subpcd_index])
+                    subpcd_index = subpcd_index[subpcd_path]
+                    cost_pcd = time.time() - start
+                    print("Time taken for predict: ", cost_pcd)
+                    subpcd_normals = np.asarray(subpcd.normals)
+                    indices.append(
+                        point_indices[subpcd_index])
+                    normals.append(subpcd_normals[subpcd_index])
                     pass
                 pass
-            else:
-                pass
-            trace_idx = np.unique(trace_idx)
-            subpcd = pcd.select_by_index(trace_idx)
-            subpcds.append(subpcd)
-            trace[idx] = trace_idx
             pass
-        
-        start = time.time()
-        subpcd_indices, _ = model_utils.predict_pcd_batch(subpcds, self.pcd_model2, self.device)
-        print("Time taken for predict batch: ", time.time() - start)
-        for i, subpcd_index in enumerate(subpcd_indices):
-            trace_idx = np.asarray(trace[index[i]])
-            predict_indices.append(trace_idx[subpcd_index])
-            pass
-        
-        predict_indices = np.unique(np.concatenate(predict_indices))
-        
-        predict_xyz = points[predict_indices]
-        start = time.time()
-        path_index = path_utils.find_path(predict_xyz)
-        print("Time taken for path: ", time.time() - start)
-        predict_indices = predict_indices[path_index]
-
-        return select_index[predict_indices]
+        return indices, normals

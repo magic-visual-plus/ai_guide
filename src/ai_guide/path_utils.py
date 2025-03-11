@@ -28,7 +28,7 @@ def find_path_most_points(parents, children, current):
                 pass
             pass
         if len(max_path_one_way1) + len(max_path_one_way2) + 1 > len(max_path_two_way):
-            return max_path_one_way1 + [current], max_path_one_way1 + [current] + max_path_one_way2
+            return max_path_one_way1 + [current], max_path_one_way1 + [current] + list(reversed(max_path_one_way2))
         else:
             return max_path_one_way1 + [current], max_path_two_way
         pass

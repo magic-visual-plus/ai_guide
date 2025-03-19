@@ -1,6 +1,6 @@
 import ultralytics
 from ai_guide import model_utils
-from ai_guide import models
+from ai_guide.models import models
 import torch
 import numpy as np
 import open3d as o3d

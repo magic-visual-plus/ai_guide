@@ -1,8 +1,8 @@
 import pointcept.models
 import torch.nn as nn
 import torch
-from . import simple_transformer
-from . import cross_transformer
+from .. import simple_transformer
+from .. import cross_transformer
 from tqdm import tqdm
 import pointcept
 
@@ -177,22 +177,3 @@ class PointNetEx(nn.Module):
         x_output = self.linear_out(x_output).squeeze(-1)
 
         return x_output
-
-
-class PointTransformerPointcept(nn.Module):
-    def __init__(self, input_size):
-        super(PointTransformerPointcept, self).__init__()
-        self.pt = pointcept.models.PointTransformerSeg50(
-            in_channels=input_size,
-            num_classes=2,
-        )
-        pass
-
-    def forward(self, x, feat, offset):
-        data_dict = {
-            "coord": x,
-            "feat": feat,
-            "offset": offset,
-        }
-        return self.pt(data_dict)[:, 1]
-        pass

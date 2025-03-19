@@ -1,10 +1,11 @@
 import ultralytics
-from ai_guide import pcd_utils, models
+from ai_guide import pcd_utils
 import torch
 import numpy as np
 import open3d as o3d
 import time
 from ai_guide import path_utils, model_utils
+from ai_guide.models import models
 import hq_seg.predictor
 import cv2
 

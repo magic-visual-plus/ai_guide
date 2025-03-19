@@ -1,5 +1,5 @@
 from . import pcd_utils
-from . import datasets
+from .datasets import ex
 import torch
 import time
 import numpy as np
@@ -17,7 +17,7 @@ def predict_pcd(pcd, model, device, threshold=0.5):
     knn_index = torch.from_numpy(knn_index).long()
 
     x_batch, x_sampled_batch, group_index_batch, knn_index_batch, labeled_batch, mask_batch,\
-        mask_sampled_batch = datasets.collate_fn([(x, x_sampled, group_index, knn_index, [])])
+        mask_sampled_batch = ex.collate_fn([(x, x_sampled, group_index, knn_index, [])])
     
     with torch.no_grad():
         x_batch = x_batch.to(device)
@@ -46,7 +46,7 @@ def predict_pcd_pt(pcd, model, device, threshold=0.1):
     x = torch.from_numpy(x).float()
     feat = torch.from_numpy(feat).float()
 
-    x_batch, feat_batch, _, offset_batch = datasets.collate_fn_pt([(x, feat, [])])
+    x_batch, feat_batch, _, offset_batch = ex.collate_fn_pt([(x, feat, [])])
     
     with torch.no_grad():
         x_batch = x_batch.to(device)
@@ -87,7 +87,7 @@ def predict_pcd_batch(pcds, model, device, threshold=0.5, batch_size=32):
             pass
         
         x_batch, x_sampled_batch, group_index_batch, knn_index_batch, labeled_batch, mask_batch,\
-            mask_sampled_batch = datasets.collate_fn(batch_data)
+            mask_sampled_batch = ex.collate_fn(batch_data)
         
         start = time.time()
         with torch.no_grad():

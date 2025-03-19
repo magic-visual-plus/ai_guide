@@ -266,3 +266,10 @@ def remove_background_plane(pcd):
     # mask[inliers] = False
 
     return pcd.select_by_index(np.where(mask)[0])
+
+
+def move_to_center(pcd):
+    points = np.asarray(pcd.points)
+    points = points - points.mean(axis=0, keepdims=True)
+    pcd.points = o3d.utility.Vector3dVector(points)
+    return pcd

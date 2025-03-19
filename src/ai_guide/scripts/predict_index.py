@@ -6,7 +6,7 @@ import open3d as o3d
 import numpy as np
 import torch
 from ai_guide import model_utils
-from ai_guide import models
+from ai_guide.models import models
 from ai_guide import detect_path_predictor
 import time
 

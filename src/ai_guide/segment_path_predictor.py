@@ -5,7 +5,7 @@ import numpy as np
 import open3d as o3d
 import time
 from ai_guide import path_utils, model_utils
-from ai_guide.models import models
+from ai_guide.models import ex, pt
 import hq_seg.predictor
 import cv2
 
@@ -13,7 +13,7 @@ import cv2
 class Predictor(object):
     def __init__(self, seg_model_file, pcd_model_file):
         self.seg_model = hq_seg.predictor.Predictor(seg_model_file, (512, 512))
-        self.pcd_model = models.PointNetEx(input_size=6)
+        self.pcd_model = ex.PointNetEx(input_size=6)
         self.pcd_model.load_state_dict(torch.load(pcd_model_file))
 
         if torch.cuda.is_available():
@@ -60,7 +60,7 @@ class Predictor(object):
 class PredictorPt(object):
     def __init__(self, seg_model_file, pcd_model_file):
         self.seg_model = hq_seg.predictor.Predictor(seg_model_file, (512, 512))
-        self.pcd_model = models.PointTransformerPointcept(input_size=6)
+        self.pcd_model = pt.PointTransformerPointcept(input_size=6)
         self.pcd_model.load_state_dict(torch.load(pcd_model_file))
 
         if torch.cuda.is_available():

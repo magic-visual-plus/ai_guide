@@ -142,7 +142,6 @@ def generate_model_data2(pcd, sample_size=512):
     feat = np.concatenate([x, x_color], axis=1)
     x = x - x.mean(axis=0, keepdims=True)
     feat = (feat - feat.mean(axis=0, keepdims=True)) / feat.std(axis=0, keepdims=True)
-    
 
     return x, feat
 

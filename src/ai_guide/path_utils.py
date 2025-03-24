@@ -44,7 +44,7 @@ def find_path(points):
     # find a path that connects as many points as possible
 
     # first find minimum spanning tree
-    k = 2000
+    k = min(2000, len(points) - 1)
     dists = cdist(points, points)
     # make down diag zero
     # dists = np.triu(dists, 1)

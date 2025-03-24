@@ -1,5 +1,5 @@
 from . import pcd_utils
-from .datasets import ex
+from .datasets import ex, pt
 import torch
 import time
 import numpy as np
@@ -46,7 +46,7 @@ def predict_pcd_pt(pcd, model, device, threshold=0.1):
     x = torch.from_numpy(x).float()
     feat = torch.from_numpy(feat).float()
 
-    x_batch, feat_batch, _, offset_batch = ex.collate_fn_pt([(x, feat, [])])
+    x_batch, feat_batch, _, offset_batch = pt.collate_fn([(x, feat, [])])
     
     with torch.no_grad():
         x_batch = x_batch.to(device)

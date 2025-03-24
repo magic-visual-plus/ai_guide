@@ -77,7 +77,7 @@ class PointTransformerDataset(torch.utils.data.Dataset):
     pass
 
 
-def collate_fn_pt(batch):
+def collate_fn(batch):
 
     xs = []
     feats = []

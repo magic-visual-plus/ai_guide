@@ -30,7 +30,7 @@ class Predictor(object):
         normals = []
         for r in box_result:
             for ibox, box in enumerate(r.boxes):
-                if box.conf > 0.0:
+                if box.conf > 0.5:
                     num_boxes += 1
                     x1, y1, x2, y2 = box.xyxy.cpu().numpy().astype(int).flatten()
                     # enlarge box
@@ -58,9 +58,6 @@ class Predictor(object):
                     if len(subpcd_index) == 0:
                         continue
                     elif len(subpcd_index) > 1:
-                        subpcd_points = np.asarray(subpcd.points)
-                        subpcd_path = path_utils.find_path(subpcd_points[subpcd_index])
-                        subpcd_index = subpcd_index[subpcd_path]
                         cost_pcd = time.time() - start
                         print("Time taken for predict: ", cost_pcd)
                         subpcd_normals = np.asarray(subpcd.normals)
@@ -73,4 +70,29 @@ class Predictor(object):
                     pass
                 pass
             pass
-        return indices, normals
+
+        indices = np.concatenate(indices)
+        normals = np.concatenate(normals)
+        points = np.asarray(pcd.points)
+
+        path = path_utils.find_path(points[indices])
+
+        indices = indices[path]
+        normals = normals[path]
+
+        indices_groups = [[indices[0]]]
+        normals_groups = [[normals[0]]]
+        for idx in range(1, len(indices)):
+            p0 = points[indices[idx - 1]]
+            p1 = points[indices[idx]]
+            if np.linalg.norm(p0 - p1) > 10:
+                indices_groups.append([indices[idx]])
+                normals_groups.append([normals[idx]])
+                pass
+            else:
+                indices_groups[-1].append(indices[idx])
+                normals_groups[-1].append(normals[idx])
+                pass
+            pass
+
+        return indices_groups, normals_groups

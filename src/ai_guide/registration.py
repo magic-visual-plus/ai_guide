@@ -173,8 +173,8 @@ def icp_registration(src, dst):
 def point_cloud_registration(pcd_src, pcd_dst):
     # (R @ pcd_src.T).T + t = pcd_dst
 
-    pcd_src = remove_background(pcd_src)
-    pcd_dst = remove_background(pcd_dst)
+    # pcd_src = remove_background(pcd_src)
+    # pcd_dst = remove_background(pcd_dst)
 
     src = np.asarray(pcd_src.points)
     dst = np.asarray(pcd_dst.points)

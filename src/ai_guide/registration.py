@@ -121,7 +121,7 @@ def remove_background(pcd):
     # remove the plane
     points = np.asarray(pcd.points)
     distance = a * points[:, 0] + b * points[:, 1] + c * points[:, 2] + d
-    index = np.where((distance <= -3.0) & (points[:, 0] < 300))[0]
+    index = np.where((distance <= -3.0) & (points[:, 0] < 300) & (points[:, 0] > -300))[0]
     pcd = pcd.select_by_index(index)
     pcd, _ = pcd.remove_radius_outlier(nb_points=30, radius=10)
     
@@ -136,9 +136,9 @@ def icp_registration(src, dst):
     src = src - center_src
     dst = dst - center_dst
 
-    try_x_angles = [0, torch.pi]
+    try_x_angles = [0]
     try_y_angles = [0]
-    try_z_angles = [0]
+    try_z_angles = [0, np.pi]
 
     try_angles = list(itertools.product(try_x_angles, try_y_angles, try_z_angles))
 
@@ -161,7 +161,7 @@ def icp_registration(src, dst):
     dst = np.tile(dst[None, ...], (len(try_angles), 1, 1))
 
     loss, R, t = icp_registration_with_torch2(src, dst, dst_tree, Rs, ts, "cuda:0", num_sample)
-
+    print(loss)
     index = np.argmin(loss)
     R = R[index]
     t = t[index]

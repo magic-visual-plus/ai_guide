@@ -30,7 +30,7 @@ class Predictor(object):
         normals = []
         for r in box_result:
             for ibox, box in enumerate(r.boxes):
-                if box.conf > 0.3:
+                if box.conf > 0.0:
                     num_boxes += 1
                     x1, y1, x2, y2 = box.xyxy.cpu().numpy().astype(int).flatten()
                     # enlarge box
@@ -55,15 +55,21 @@ class Predictor(object):
                     subpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=10))
                     start = time.time()
                     subpcd_index, _ = model_utils.predict_pcd_pt(subpcd, self.pcd_model, self.device)
-                    subpcd_points = np.asarray(subpcd.points)
-                    subpcd_path = path_utils.find_path(subpcd_points[subpcd_index])
-                    subpcd_index = subpcd_index[subpcd_path]
-                    cost_pcd = time.time() - start
-                    print("Time taken for predict: ", cost_pcd)
-                    subpcd_normals = np.asarray(subpcd.normals)
-                    indices.append(
-                        point_indices[subpcd_index])
-                    normals.append(subpcd_normals[subpcd_index])
+                    if len(subpcd_index) == 0:
+                        continue
+                    elif len(subpcd_index) > 1:
+                        subpcd_points = np.asarray(subpcd.points)
+                        subpcd_path = path_utils.find_path(subpcd_points[subpcd_index])
+                        subpcd_index = subpcd_index[subpcd_path]
+                        cost_pcd = time.time() - start
+                        print("Time taken for predict: ", cost_pcd)
+                        subpcd_normals = np.asarray(subpcd.normals)
+                        indices.append(
+                            point_indices[subpcd_index])
+                        normals.append(subpcd_normals[subpcd_index])
+                    else:
+                        indices.append(point_indices[subpcd_index])
+                        normals.append(np.asarray(subpcd.normals)[subpcd_index])
                     pass
                 pass
             pass

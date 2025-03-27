@@ -47,6 +47,7 @@ def register_point_cloud(src, dst):
 def icp_registration_with_torch2(src, dst, dst_tree, R, t, device, num_sample):
     src = torch.from_numpy(src).to(device).float()
     dst = torch.from_numpy(dst).to(device).float()
+    # dst, _ = pytorch3d.ops.sample_farthest_points(dst, K=100000)
 
     R = torch.from_numpy(R).to(device).float()
     t = torch.from_numpy(t).to(device).float()
@@ -108,37 +109,43 @@ def icp_registration_with_torch(src, dst, dst_tree, R, t, device, num_sample):
     return loss, R.detach().cpu().numpy(), t.detach().cpu().numpy()
     pass
 
-def remove_background(pcd):
+def remove_background(pcd, distance_threshold=-3.0, x_range=None):
     index = pcd_utils.select_points(pcd)
     pcd = pcd.select_by_index(index)
 
     # find plane
     plane_model, inliers = pcd.segment_plane(
-        distance_threshold=0.5,
+        distance_threshold=1,
         ransac_n=3,
         num_iterations=1000)
     [a, b, c, d] = plane_model
     # remove the plane
     points = np.asarray(pcd.points)
     distance = a * points[:, 0] + b * points[:, 1] + c * points[:, 2] + d
-    index = np.where((distance <= -3.0) & (points[:, 0] < 300) & (points[:, 0] > -300))[0]
+    mask = distance <= distance_threshold
+    if x_range is not None:
+        mask = mask & (points[:, 0] < x_range[1]) & (points[:, 0] > x_range[0])
+        pass
+
+    index = np.where(mask)[0]
     pcd = pcd.select_by_index(index)
     pcd, _ = pcd.remove_radius_outlier(nb_points=30, radius=10)
     
     return pcd
 
-def icp_registration(src, dst):
+def icp_registration(src, dst, z_angle=0):
     # move to center
     center_src = np.mean(src, axis=0, keepdims=True)
     center_dst = np.mean(dst, axis=0, keepdims=True)
-    num_sample = 5000
+    print(len(src))
+    num_sample = 10000
 
     src = src - center_src
     dst = dst - center_dst
 
     try_x_angles = [0]
     try_y_angles = [0]
-    try_z_angles = [0, np.pi]
+    try_z_angles = [i+z_angle for i in [0, np.pi / 2, np.pi, np.pi * 3 / 2]]
 
     try_angles = list(itertools.product(try_x_angles, try_y_angles, try_z_angles))
 
@@ -160,7 +167,9 @@ def icp_registration(src, dst):
     src = np.tile(src_sampled[None, ...], (len(try_angles), 1, 1))
     dst = np.tile(dst[None, ...], (len(try_angles), 1, 1))
 
-    loss, R, t = icp_registration_with_torch2(src, dst, dst_tree, Rs, ts, "cuda:0", num_sample)
+    with torch.no_grad():
+        loss, R, t = icp_registration_with_torch2(src, dst, dst_tree, Rs, ts, "cuda:0", num_sample)
+        pass
     print(loss)
     index = np.argmin(loss)
     R = R[index]
@@ -170,16 +179,31 @@ def icp_registration(src, dst):
     return loss, R, t - (R @ center_src.T).T + center_dst
     pass
 
-def point_cloud_registration(pcd_src, pcd_dst):
+def point_cloud_registration(pcd_src, pcd_dst, loss_max=5.0, retry=2, volume_size=0):
     # (R @ pcd_src.T).T + t = pcd_dst
 
     # pcd_src = remove_background(pcd_src)
     # pcd_dst = remove_background(pcd_dst)
 
+    if volume_size > 0:
+        pcd_dst = pcd_dst.voxel_down_sample(voxel_size=volume_size)
+        pcd_src = pcd_src.voxel_down_sample(voxel_size=volume_size)
+        pass
+
     src = np.asarray(pcd_src.points)
     dst = np.asarray(pcd_dst.points)
 
-    loss, R, t = icp_registration(src, dst)
+    z_angle = 0
+    for i in range(retry):
+        loss, R, t = icp_registration(src, dst, z_angle=z_angle)
+        if loss < loss_max:
+            break
 
+        z_angle += np.pi / retry / 2
+        pass
+
+    if loss > loss_max:
+        raise RuntimeError('Registration failed')
+    
     return loss, R, t
     pass

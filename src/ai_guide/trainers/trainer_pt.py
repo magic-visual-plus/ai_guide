@@ -15,9 +15,9 @@ def run_train(data_path, device, num_epochs=100):
     # val_dataset = datasets.PointNetDatasetPickled(os.path.join(data_path, 'val'), is_test=True)
 
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=4, shuffle=True, collate_fn=pt.collate_fn, num_workers=16)
+        train_dataset, batch_size=8, shuffle=True, collate_fn=pt.collate_fn, num_workers=16)
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=4, shuffle=False, collate_fn=pt.collate_fn, num_workers=16)
+        val_dataset, batch_size=8, shuffle=False, collate_fn=pt.collate_fn, num_workers=16)
 
     model = models.PointTransformerPointcept(input_size=6)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)

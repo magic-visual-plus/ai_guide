@@ -152,10 +152,13 @@ def replace_nan(pcd, v):
 
     nan_mask = np.isnan(points).any(axis=1)
     points[nan_mask] = v
-    colors[nan_mask] = 0
 
     pcd = o3d.geometry.PointCloud(points=o3d.utility.Vector3dVector(points))
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    if colors.size > 0:
+        colors[nan_mask] = 0
+        pcd.colors = o3d.utility.Vector3dVector(colors)
+        pass
+    
     return pcd
 
 def filter_nan_and_zero(pcd):

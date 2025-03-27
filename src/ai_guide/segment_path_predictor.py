@@ -97,9 +97,12 @@ class PredictorPt(object):
         pcd = pcd.select_by_index(select_index)
 
         index, _ = model_utils.predict_pcd_pt(pcd, self.pcd_model, self.device, 0.05)
+        start = time.time()
+        index, _ = model_utils.predict_pcd_pt(pcd, self.pcd_model, self.device, 0.05)
         print(len(index))
         # print(index)
         path = path_utils.find_path(np.asarray(pcd.points)[index])
         # path = np.arange(len(index))
+        print("Time taken: ", time.time() - start)
 
         return select_index[index[path]]

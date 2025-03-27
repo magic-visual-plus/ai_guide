@@ -201,9 +201,6 @@ def point_cloud_registration(pcd_src, pcd_dst, loss_max=5.0, retry=2, volume_siz
 
         z_angle += np.pi / retry / 2
         pass
-
-    if loss > loss_max:
-        raise RuntimeError('Registration failed')
     
     return loss, R, t
     pass

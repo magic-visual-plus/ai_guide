@@ -9,17 +9,23 @@ from tqdm import tqdm
 logger = loguru.logger
 
 def run_train(data_path, device, num_epochs=100):
-    train_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'train'), size=4096, voxel_size=0)
-    val_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'val'), is_test=True, voxel_size=0)
+    train_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'train'), size=64, voxel_size=4)
+    val_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'val'), is_test=True, voxel_size=4)
     # train_dataset = datasets.PointNetDatasetPickled(os.path.join(data_path, 'train'), size=256)
     # val_dataset = datasets.PointNetDatasetPickled(os.path.join(data_path, 'val'), is_test=True)
-
+    pos_weight = 10.0
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=8, shuffle=True, collate_fn=pt.collate_fn, num_workers=16)
+        train_dataset, batch_size=2, shuffle=True, collate_fn=pt.collate_fn, num_workers=16)
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=8, shuffle=False, collate_fn=pt.collate_fn, num_workers=16)
+        val_dataset, batch_size=2, shuffle=False, collate_fn=pt.collate_fn, num_workers=16)
 
+    # model = models.PointTransformerPointceptSmall(input_size=6)
     model = models.PointTransformerPointcept(input_size=6)
+    if os.path.exists(os.path.join('.', 'output', 'model.pth')):
+        # model.load_state_dict(torch.load(os.path.join('.', 'output', 'model.pth')))
+        # logger.info('Loaded model from checkpoint')
+        pass
+
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.9)
     warmup_epochs = 10
@@ -46,7 +52,7 @@ def run_train(data_path, device, num_epochs=100):
             # if mask.sum() == 0:
             #     continue
             # loss = (loss * mask).sum() / mask.sum()
-            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, label, pos_weight=torch.tensor([10.0]).to(device), reduction='none')
+            loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, label, pos_weight=torch.tensor([pos_weight]).to(device), reduction='none')
             loss = loss.mean()
             optimizer.zero_grad()
             loss.backward()
@@ -74,7 +80,8 @@ def run_train(data_path, device, num_epochs=100):
                 # if mask.sum() == 0:
                 #     continue
                 # loss = (loss * mask).sum() / mask.sum()
-                loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, label, pos_weight=torch.tensor([10.0]).to(device), reduction='none')
+                # pos_weight = (label.shape[0] - label.sum()) / label.sum()
+                loss = torch.nn.functional.binary_cross_entropy_with_logits(logits, label, pos_weight=torch.tensor([pos_weight]).to(device), reduction='none')
                 loss = loss.mean()
                 proba = torch.sigmoid(logits)
                 pred = (proba>0.5).float()

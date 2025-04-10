@@ -55,7 +55,7 @@ def icp_registration_with_torch2(src, dst, dst_tree, R, t, device, num_sample):
 
     print(R.shape, t.shape, s.shape)
     init = pytorch3d.ops.points_alignment.SimilarityTransform(R, t, s)
-    result = pytorch3d.ops.iterative_closest_point(src, dst, init, estimate_scale=False)
+    result = pytorch3d.ops.iterative_closest_point(src, dst, init, estimate_scale=False, max_iterations=100, relative_rmse_thr=0.001)
 
     R, t, s = result.RTs
     loss = result.rmse
@@ -145,7 +145,7 @@ def icp_registration(src, dst, z_angle=0):
 
     try_x_angles = [0]
     try_y_angles = [0]
-    try_z_angles = [i+z_angle for i in [0, np.pi / 2, np.pi, np.pi * 3 / 2]]
+    try_z_angles = [i+z_angle for i in [0, np.pi / 2, np.pi, 3 * np.pi / 2]]
 
     try_angles = list(itertools.product(try_x_angles, try_y_angles, try_z_angles))
 
@@ -179,7 +179,7 @@ def icp_registration(src, dst, z_angle=0):
     return loss, R, t - (R @ center_src.T).T + center_dst
     pass
 
-def point_cloud_registration(pcd_src, pcd_dst, loss_max=5.0, retry=2, volume_size=0):
+def point_cloud_registration(pcd_src, pcd_dst, loss_max=5.0, retry=2, volume_size=0, start_index=0):
     # (R @ pcd_src.T).T + t = pcd_dst
 
     # pcd_src = remove_background(pcd_src)

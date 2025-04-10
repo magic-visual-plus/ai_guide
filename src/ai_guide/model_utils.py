@@ -37,10 +37,17 @@ def predict_pcd(pcd, model, device, threshold=0.5):
     return pred_index, proba.cpu().numpy()
 
 
-def predict_pcd_pt(pcd, model, device, threshold=0.1):
+def predict_pcd_pt(pcd, model, device, threshold=0.1, voxel_size=0):
     selected_index = pcd_utils.select_points(pcd)
     # selected_index = np.arange(len(pcd.points))
     pcd_selected = pcd.select_by_index(selected_index)
+
+    if voxel_size > 0:
+        pcd_selected, _, trace = pcd_selected.voxel_down_sample_and_trace(
+            voxel_size=voxel_size, min_bound=pcd_selected.get_min_bound(), max_bound=pcd_selected.get_max_bound()
+        )
+        pass
+
     x, feat = pcd_utils.generate_model_data2(pcd_selected, sample_size=512)
 
     x = torch.from_numpy(x).float()
@@ -58,10 +65,18 @@ def predict_pcd_pt(pcd, model, device, threshold=0.1):
     proba = torch.sigmoid(x_logits)
     pred_index = proba > threshold
     pred_index = pred_index.cpu().numpy()
+    proba = proba.cpu().numpy()
 
-    pred_index = selected_index[pred_index]
+    if voxel_size > 0:
+        pred_index = np.where(pred_index)[0]
+        pred_index = np.unique(np.concatenate([trace[i] for i in pred_index]))
+        pred_index = selected_index[pred_index]
+        pass
+    else:
+        pred_index = selected_index[pred_index]
+        pass
 
-    return pred_index, proba.cpu().numpy()
+    return pred_index, proba
 
 def predict_pcd_batch(pcds, model, device, threshold=0.5, batch_size=32):
     pred_indices = []

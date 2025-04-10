@@ -4,24 +4,33 @@ import open3d as o3d
 import numpy as np
 import scipy.spatial
 import time
+from ai_guide import foreground_extractor
+
 
 if __name__ == '__main__':
     src_path = sys.argv[1]
     dst_path = sys.argv[2]
-    output_path = sys.argv[3]
+    model_path = sys.argv[3]
+    output_path = sys.argv[4]
 
     src_pcd = o3d.io.read_point_cloud(src_path)
     dst_pcd = o3d.io.read_point_cloud(dst_path)
 
+    foreground_extractor = foreground_extractor.ForegroundExtractor(model_path, volume_size=4, threshold=0.5)
     # src_pcd = registration.remove_background(src_pcd, distance_threshold=-50)
-    for i in range(5):
-        dst_pcd_ = registration.remove_background(dst_pcd, distance_threshold=-5)
-        start = time.time()
-        loss, R, t = registration.point_cloud_registration(src_pcd, dst_pcd_, loss_max=5.0, retry=1, volume_size=2)
-        print(f'time cost: {time.time() - start}, rmse: {loss}')
-        if loss > 5:
-            continue
-        break
+    # for i in range(5):
+    #     dst_pcd_ = registration.remove_background(dst_pcd, distance_threshold=-5)
+    #     start = time.time()
+    #     loss, R, t = registration.point_cloud_registration(src_pcd, dst_pcd_, loss_max=5.0, retry=2, volume_size=4)
+    #     print(f'time cost: {time.time() - start}, rmse: {loss}')
+    #     if loss > 5:
+    #         continue
+    #     break
+
+    dst_pcd_ = foreground_extractor.extract(dst_pcd)
+    start = time.time()
+    loss, R, t = registration.point_cloud_registration(src_pcd, dst_pcd_, loss_max=5.0, retry=2, volume_size=4)
+    print(f'time cost: {time.time() - start}, rmse: {loss}')
 
     src_points = np.asarray(src_pcd.points)
     dst_points = np.asarray(dst_pcd.points)

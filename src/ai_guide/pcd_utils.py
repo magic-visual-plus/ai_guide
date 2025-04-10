@@ -138,10 +138,15 @@ def generate_model_data(pcd, sample_size=512):
 def generate_model_data2(pcd, sample_size=512):
     x = np.asarray(pcd.points).astype(np.float32)
     x_color = np.asarray(pcd.colors).astype(np.float32)
+    if x_color.size == 0:
+        x_color = np.zeros_like(x)
+        pass
     
     feat = np.concatenate([x, x_color], axis=1)
     x = x - x.mean(axis=0, keepdims=True)
-    feat = (feat - feat.mean(axis=0, keepdims=True)) / feat.std(axis=0, keepdims=True)
+    std = feat.std(axis=0, keepdims=True)
+    std[std == 0] = 1
+    feat = (feat - feat.mean(axis=0, keepdims=True)) / std
 
     return x, feat
 
@@ -209,6 +214,9 @@ def transform(pcd):
     r = scipy.spatial.transform.Rotation.random().as_matrix()
     b = np.random.uniform(-100, 100, 3)
     points = (r @ points.T).T + b
+
+    noise = np.random.normal(0, 0.1, points.shape)
+    points += noise
 
     pcd.points = o3d.utility.Vector3dVector(points)
 

@@ -65,6 +65,20 @@ class PointTransformerDataset(torch.utils.data.Dataset):
 
         if not self.is_test:
             pcd = pcd_utils.transform(pcd)
+
+            # if random.random() < 0.9:
+            #     # random drop background
+            #     selected_index = np.where(label == 0)[0]
+            #     num = len(selected_index) * np.random.uniform(0.5, 1.0)
+            #     if num == 0:
+            #         num = 1
+            #         pass
+
+            #     selected_index = np.random.choice(selected_index, int(num), replace=False)
+            #     selected_index = np.unique(np.concatenate((selected_index, np.where(label == 1)[0])))
+            #     pcd = pcd.select_by_index(selected_index)
+            #     label = label[selected_index]
+            #     pass
             pass
 
         x, feat = pcd_utils.generate_model_data2(pcd)

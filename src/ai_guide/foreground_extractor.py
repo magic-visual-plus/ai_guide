@@ -13,7 +13,7 @@ class ForegroundExtractor:
         self.threshold = threshold
     
     def extract(self, pcd, threshold=0.5):
-        pred_index, _ = model_utils.predict_pcd_pt(pcd, self.model, self.device, 0.5, 4)
+        pred_index, _ = model_utils.predict_pcd_pt(pcd, self.model, self.device, self.threshold, self.volume_size)
         
         return pcd.select_by_index(pred_index)
     pass

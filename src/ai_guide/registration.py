@@ -55,7 +55,7 @@ def icp_registration_with_torch2(src, dst, dst_tree, R, t, device, num_sample):
 
     print(R.shape, t.shape, s.shape)
     init = pytorch3d.ops.points_alignment.SimilarityTransform(R, t, s)
-    result = pytorch3d.ops.iterative_closest_point(src, dst, init, estimate_scale=False, max_iterations=100, relative_rmse_thr=0.001)
+    result = pytorch3d.ops.iterative_closest_point(src, dst, init, estimate_scale=False, max_iterations=100, relative_rmse_thr=0.0001)
 
     R, t, s = result.RTs
     loss = result.rmse
@@ -143,8 +143,8 @@ def icp_registration(src, dst, z_angle=0):
     src = src - center_src
     dst = dst - center_dst
 
-    try_x_angles = [0]
-    try_y_angles = [0]
+    try_x_angles = [0, np.pi]
+    try_y_angles = [0, np.pi]
     try_z_angles = [i+z_angle for i in [0, np.pi / 2, np.pi, 3 * np.pi / 2]]
 
     try_angles = list(itertools.product(try_x_angles, try_y_angles, try_z_angles))
@@ -203,4 +203,113 @@ def point_cloud_registration(pcd_src, pcd_dst, loss_max=5.0, retry=2, volume_siz
         pass
     
     return loss, R, t
+    pass
+
+
+def angles2rotation_matrices(angles):
+    Rs = []
+    for angle in angles:
+        R = o3d.geometry.get_rotation_matrix_from_xyz(angle)
+        Rs.append(R)
+        pass
+    Rs = np.stack(Rs, axis=0)
+    return Rs
+
+def icp_registration_with_torch3d(src, dst, Rs, ts, thr, num_iter=100):
+
+    if len(src.shape) == 2:
+        src = torch.tile(src[None, ...], (Rs.shape[0], 1, 1))
+        dst = torch.tile(dst[None, ...], (Rs.shape[0], 1, 1))
+        pass
+
+    s = torch.ones(ts.shape[0]).to(ts.device).float()
+    Rs = Rs.transpose(1, 2)
+
+    init = pytorch3d.ops.points_alignment.SimilarityTransform(Rs, ts, s)
+    result = pytorch3d.ops.iterative_closest_point(
+        src, dst, init, estimate_scale=False, max_iterations=num_iter, relative_rmse_thr=thr,
+        )
+
+    R, t, s = result.RTs
+    loss = result.rmse
+    R = R.transpose(1, 2)
+
+    index = torch.argmin(loss)
+    R = R[index]
+    t = t[index]
+    loss = loss[index]
+    
+    return loss, R, t
+    pass
+
+def point_cloud_registration_with_calibration(pcd_src, pcd_dst, loss_max=5.0, retry=2, volume_size=0, device="cuda:0"):
+    # (R @ pcd_src.T).T + t = pcd_dst
+
+    if volume_size > 0:
+        pcd_dst = pcd_dst.voxel_down_sample(voxel_size=volume_size)
+        pcd_src = pcd_src.voxel_down_sample(voxel_size=volume_size)
+        pass
+
+    src = np.asarray(pcd_src.points)
+    dst = np.asarray(pcd_dst.points)
+
+    # move to center
+    center_src = np.mean(src, axis=0, keepdims=True)
+    center_dst = np.mean(dst, axis=0, keepdims=True)
+    num_sample = 10000
+
+    src = src - center_src
+    dst = dst - center_dst
+
+    src_tensor = torch.from_numpy(src).float().to(device)
+    dst_tensor = torch.from_numpy(dst).float().to(device)
+    start = time.time()
+    for itry in range(retry):
+        z_init_angle = (itry / retry) * np.pi / 2
+        
+        try_x_angles = [0]
+        try_y_angles = [0]
+        try_z_angles = [i+z_init_angle for i in [0, np.pi / 2, np.pi, 3 * np.pi / 2]]
+
+        try_angles = list(itertools.product(try_x_angles, try_y_angles, try_z_angles))
+        Rs = angles2rotation_matrices(try_angles)
+        ts = np.zeros((len(try_angles), 3))
+
+        Rs_tensor = torch.from_numpy(Rs).float().to(device)
+        ts_tensor = torch.from_numpy(ts).float().to(device)
+
+        # sample src
+        src_sampled_tensor = src_tensor[torch.randperm(len(src))[:num_sample]]
+        loss, R, t = icp_registration_with_torch3d(src_sampled_tensor, dst_tensor, Rs_tensor, ts_tensor, thr=1e-2)
+        print(f'icp try {itry}, time cost: {time.time() - start}, rmse: {loss.item()}')
+
+        if loss.item() < loss_max:
+            break
+        pass
+
+    # do calibration
+    src_estimate = (R @ src_tensor.T).T + t
+
+    nn_res = pytorch3d.ops.knn_points(src_estimate.unsqueeze(0), dst_tensor.unsqueeze(0), K=1)
+    nn_dists = nn_res.dists.squeeze(0).squeeze(-1)
+    nn_order = torch.argsort(nn_dists)
+    nn_order = nn_order[:int(len(nn_order) * 0.95)]
+    # selected_mask = nn_dists < torch.mean(nn_dists)
+    # src_selected = src_tensor[selected_mask]
+    src_selected = src_tensor[nn_order]
+    print(f'selected points: {len(src_selected)}')
+    if src_selected.shape[0] > num_sample:
+        src_selected_ = src_selected[torch.randperm(len(src_selected))[:num_sample]]
+        pass
+    
+    start = time.time()
+    loss, R, t = icp_registration_with_torch3d(
+        src_selected_, dst_tensor, R.unsqueeze(0), t.unsqueeze(0), thr=1e-4, num_iter=20)
+
+    print(f'calibration cost: {time.time() - start}, loss: {loss.item()}')
+    R = R.squeeze(0).cpu().numpy()
+    t = t.squeeze(0).cpu().numpy()
+
+    t = t - (R @ center_src.T).T + center_dst
+    return loss.item(), R, t, src_selected.cpu().numpy() + center_src
     pass

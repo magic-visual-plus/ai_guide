@@ -53,8 +53,14 @@ class PointTransformerDataset(torch.utils.data.Dataset):
         label = label[select_index]
 
         if self.voxel_size > 0:
+            if not self.is_test:
+                voxel_size = self.voxel_size + random.uniform(-1.0, 1.0)
+                pass
+            else:
+                voxel_size = self.voxel_size
+                pass
             pcd, _, trace = pcd.voxel_down_sample_and_trace(
-                voxel_size=self.voxel_size, min_bound=pcd.get_min_bound(), max_bound=pcd.get_max_bound())
+                voxel_size=voxel_size, min_bound=pcd.get_min_bound(), max_bound=pcd.get_max_bound())
             
             label_down = np.zeros(len(pcd.points), dtype=np.int32)
             for i, id_list in enumerate(trace):
@@ -83,7 +89,7 @@ class PointTransformerDataset(torch.utils.data.Dataset):
 
         x, feat = pcd_utils.generate_model_data2(pcd)
         point_indices = np.where(label)[0]
-
+        # print(x.shape)
         x = torch.from_numpy(x).float()
         feat = torch.from_numpy(feat).float()
 

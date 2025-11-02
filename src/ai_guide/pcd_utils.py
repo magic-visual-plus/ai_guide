@@ -215,7 +215,7 @@ def transform(pcd):
     b = np.random.uniform(-100, 100, 3)
     points = (r @ points.T).T + b
 
-    noise = np.random.normal(0, 0.1, points.shape)
+    noise = np.random.normal(0, 0.01, points.shape)
     points += noise
 
     pcd.points = o3d.utility.Vector3dVector(points)

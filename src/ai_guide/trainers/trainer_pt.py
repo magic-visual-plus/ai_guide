@@ -9,18 +9,18 @@ from tqdm import tqdm
 logger = loguru.logger
 
 def run_train(data_path, device, num_epochs=100):
-    train_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'train'), size=64, voxel_size=4)
-    val_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'val'), is_test=True, voxel_size=4)
+    train_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'train'), size=32, voxel_size=8)
+    val_dataset = pt.PointTransformerDataset(os.path.join(data_path, 'val'), is_test=True, voxel_size=8)
     # train_dataset = datasets.PointNetDatasetPickled(os.path.join(data_path, 'train'), size=256)
     # val_dataset = datasets.PointNetDatasetPickled(os.path.join(data_path, 'val'), is_test=True)
-    pos_weight = 10.0
+    pos_weight = 2.0
     train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=2, shuffle=True, collate_fn=pt.collate_fn, num_workers=16)
+        train_dataset, batch_size=3, shuffle=True, collate_fn=pt.collate_fn, num_workers=16)
     val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=2, shuffle=False, collate_fn=pt.collate_fn, num_workers=16)
+        val_dataset, batch_size=3, shuffle=False, collate_fn=pt.collate_fn, num_workers=16)
 
-    # model = models.PointTransformerPointceptSmall(input_size=6)
-    model = models.PointTransformerPointcept(input_size=6)
+    model = models.PointTransformerPointceptSmall(input_size=6)
+    # model = models.PointTransformerPointcept(input_size=6)
     if os.path.exists(os.path.join('.', 'output', 'model.pth')):
         # model.load_state_dict(torch.load(os.path.join('.', 'output', 'model.pth')))
         # logger.info('Loaded model from checkpoint')

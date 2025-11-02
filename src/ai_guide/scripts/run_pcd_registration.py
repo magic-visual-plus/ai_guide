@@ -16,7 +16,7 @@ if __name__ == '__main__':
     src_pcd = o3d.io.read_point_cloud(src_path)
     dst_pcd = o3d.io.read_point_cloud(dst_path)
 
-    foreground_extractor = foreground_extractor.ForegroundExtractor(model_path, volume_size=4, threshold=0.5)
+    foreground_extractor = foreground_extractor.ForegroundExtractor(model_path, volume_size=8, threshold=0.8)
     # src_pcd = registration.remove_background(src_pcd, distance_threshold=-50)
     # for i in range(5):
     #     dst_pcd_ = registration.remove_background(dst_pcd, distance_threshold=-5)
@@ -26,14 +26,17 @@ if __name__ == '__main__':
     #     if loss > 5:
     #         continue
     #     break
-
-    dst_pcd_ = foreground_extractor.extract(dst_pcd)
+    
     start = time.time()
-    loss, R, t = registration.point_cloud_registration(src_pcd, dst_pcd_, loss_max=5.0, retry=2, volume_size=4)
-    print(f'time cost: {time.time() - start}, rmse: {loss}')
-
-    src_points = np.asarray(src_pcd.points)
-    dst_points = np.asarray(dst_pcd.points)
+    dst_pcd_ = foreground_extractor.extract(dst_pcd)
+    print(len(dst_pcd_.points))
+    
+    loss, R, t, src_selected = registration.point_cloud_registration_with_calibration(
+        src_pcd, dst_pcd_, loss_max=10.0, retry=2, volume_size=1)
+    print(f'time cost: {time.time() - start}', f'rmse: {loss}')
+    src_points = src_selected
+    # src_points = np.asarray(src_pcd.points)
+    dst_points = np.asarray(dst_pcd_.points)
 
     np.nan_to_num(src_points, copy=False)
     np.nan_to_num(dst_points, copy=False)

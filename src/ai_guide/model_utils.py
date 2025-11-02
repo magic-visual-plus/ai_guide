@@ -49,6 +49,7 @@ def predict_pcd_pt(pcd, model, device, threshold=0.1, voxel_size=0):
         pass
 
     x, feat = pcd_utils.generate_model_data2(pcd_selected, sample_size=512)
+    print("Generated model data size: ", x.shape, feat.shape)
 
     x = torch.from_numpy(x).float()
     feat = torch.from_numpy(feat).float()
@@ -59,7 +60,9 @@ def predict_pcd_pt(pcd, model, device, threshold=0.1, voxel_size=0):
         x_batch = x_batch.to(device)
         feat_batch = feat_batch.to(device)
         offset_batch = offset_batch.to(device)
+        start = time.time()
         x_logits = model(x_batch, feat_batch, offset_batch)
+        print("Time taken for forward: ", time.time() - start)
         pass
     x_logits = x_logits.squeeze(0)
     proba = torch.sigmoid(x_logits)

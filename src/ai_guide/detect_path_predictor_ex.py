@@ -28,6 +28,8 @@ class Predictor(object):
         box_result = self.det_model.predict([img], bgr=True, confidence=0.5)[0]
         cost_det = time.time() - start
 
+        print(f"Time taken for detection: {cost_det}")
+
         num_boxes = 0
         indices = []
         normals = []
@@ -52,17 +54,31 @@ class Predictor(object):
             point_indices = np.concatenate(point_indices)
             subpcd = pcd.select_by_index(point_indices)
             
+            subpcd, _, trace = subpcd.voxel_down_sample_and_trace(
+                voxel_size=0.5,min_bound=subpcd.get_min_bound(), max_bound=subpcd.get_max_bound())
+            
             subpcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=10))
             start = time.time()
             subpcd_index, _ = model_utils.predict_pcd(subpcd, self.pcd_model, self.device, threshold=0.2)
+
             if len(subpcd_index) == 0:
                 continue
             elif len(subpcd_index) > 1:
+                subpcd_index_in_original = []
+                for si in subpcd_index:
+                    if trace[si][-1] < 0:
+                        continue
+                    point_indices_per_box = trace[si][-1]
+                    subpcd_index_in_original.append(point_indices[point_indices_per_box])
+                    pass
+
+                # selected_index = path_utils.find_path(np.asarray(subpcd.points)[subpcd_index])
+                # subpcd_index = subpcd_index[selected_index]
                 cost_pcd = time.time() - start
                 print("Time taken for predict: ", cost_pcd)
                 subpcd_normals = np.asarray(subpcd.normals)
                 indices.append(
-                    point_indices[subpcd_index])
+                    subpcd_index_in_original)
                 normals.append(subpcd_normals[subpcd_index])
             else:
                 indices.append(point_indices[subpcd_index])
@@ -73,7 +89,9 @@ class Predictor(object):
         normals = np.concatenate(normals)
         points = np.asarray(pcd.points)
 
+        start = time.time()
         path = path_utils.find_path(points[indices])
+        print("Time taken for find path: ", time.time() - start)
 
         indices = indices[path]
         normals = normals[path]

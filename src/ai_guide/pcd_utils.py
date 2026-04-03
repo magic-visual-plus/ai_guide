@@ -105,10 +105,13 @@ def select_points(pcd):
     index_nonzero = np.where(mask_nonzero)[0]
     return index_nonzero
 
-def generate_model_data(pcd, sample_size=512):
+def generate_model_data(pcd, sample_size=512, use_color=True):
     x = np.asarray(pcd.points).astype(np.float32)
     x_color = np.asarray(pcd.colors).astype(np.float32)
     
+    if (x_color.size == 0) or (not use_color):
+        x_color = np.zeros_like(x)
+        pass
     if x.shape[0] < sample_size:
         sample_size = x.shape[0]
         pass
@@ -135,10 +138,10 @@ def generate_model_data(pcd, sample_size=512):
     return x, x_sampled, group_index, knn_index
     pass
 
-def generate_model_data2(pcd, sample_size=512):
+def generate_model_data2(pcd, sample_size=512, use_color=False):
     x = np.asarray(pcd.points).astype(np.float32)
     x_color = np.asarray(pcd.colors).astype(np.float32)
-    if x_color.size == 0:
+    if (x_color.size == 0) or (not use_color):
         x_color = np.zeros_like(x)
         pass
     
@@ -211,7 +214,8 @@ def transform(pcd):
     points = np.asarray(pcd.points)
 
     points = (points - points.mean(axis=0, keepdims=True))
-    r = scipy.spatial.transform.Rotation.random().as_matrix()
+    # r = scipy.spatial.transform.Rotation.random().as_matrix()
+    r = scipy.spatial.transform.Rotation.from_euler('xyz', np.random.uniform(0, 10, 3), degrees=True).as_matrix()
     b = np.random.uniform(-100, 100, 3)
     points = (r @ points.T).T + b
 

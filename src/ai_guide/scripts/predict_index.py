@@ -8,14 +8,14 @@ import numpy as np
 from ai_guide import detect_path_predictor_ex as detect_path_predictor
 import time
 
-def run_infer(det_model_file, pcd_model_file, input_img_file, input_pcd_file, output_file, output_normal_file):
+def run_infer(det_model_file, pcd_model_file, input_img_file, input_pcd_file, output_file, output_normal_file, output_2d_file):
     index_predictor = detect_path_predictor.Predictor(det_model_file, pcd_model_file)
 
     frame = cv2.imread(input_img_file)
     pcd = o3d.io.read_point_cloud(input_pcd_file)
     
     start = time.time()
-    indices, normals = index_predictor.predict(frame, pcd)
+    indices, normals, indices_2d = index_predictor.predict(frame, pcd, return_2d_points=True)
     print("Time taken: ", time.time() - start)
     # indices = np.concatenate(indices, axis=0)
 
@@ -31,7 +31,13 @@ def run_infer(det_model_file, pcd_model_file, input_img_file, input_pcd_file, ou
             nf.write("\n")
             pass
         pass
-    pass
+
+    with open(output_2d_file, "w") as fout:
+        for indices in indices_2d:
+            fout.write(",".join([str(i) for i in indices]))
+            fout.write("\n")
+            pass
+        pass
     return pcd
 
 
@@ -43,5 +49,6 @@ if __name__ == "__main__":
     input_pcd_file = sys.argv[4]
     output_file = sys.argv[5]
     output_normal_file = sys.argv[6]
+    output_2d_file = sys.argv[7]
 
-    run_infer(det_model_file, pcd_model_file, input_img_file, input_pcd_file, output_file, output_normal_file)
+    run_infer(det_model_file, pcd_model_file, input_img_file, input_pcd_file, output_file, output_normal_file, output_2d_file)

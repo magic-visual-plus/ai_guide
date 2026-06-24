@@ -82,11 +82,11 @@ class Predictor(object):
                 indices.append(
                     subpcd_index_in_original)
                 normals.append(subpcd_normals[subpcd_index])
-                original_indices.append(p_indices)
+                original_indices.append(point_indices)
             else:
                 indices.append(point_indices[subpcd_index])
                 normals.append(np.asarray(subpcd.normals)[subpcd_index])
-                original_indices.append(p_indices)
+                original_indices.append(point_indices)
             pass
 
         indices_groups_before_concat = []

@@ -11,6 +11,7 @@ from hq_det.models import rtdetr
 class Predictor(object):
     def __init__(self, det_model_file, pcd_model_file):
         self.det_model = rtdetr.HQRTDETR(model=det_model_file)
+        self.class_names = self.det_model.get_class_names()
         self.pcd_model = models.PointNetEx(input_size=6)
         self.pcd_model.load_state_dict(torch.load(pcd_model_file))
 
@@ -34,7 +35,9 @@ class Predictor(object):
         indices = []
         normals = []
         original_indices = []
+        box_class_names = []
         for ibox, box in enumerate(box_result.bboxes):
+            box_class_name = self.class_names[box_result.cls[ibox]]
             num_boxes += 1
             x1, y1, x2, y2 = box.astype(int).flatten()
             # enlarge box
@@ -83,10 +86,12 @@ class Predictor(object):
                     subpcd_index_in_original)
                 normals.append(subpcd_normals[subpcd_index])
                 original_indices.append(point_indices)
+                box_class_names.append(box_class_name)
             else:
                 indices.append(point_indices[subpcd_index])
                 normals.append(np.asarray(subpcd.normals)[subpcd_index])
                 original_indices.append(point_indices)
+                box_class_names.append(box_class_name)
             pass
 
         indices_groups_before_concat = []
@@ -111,16 +116,18 @@ class Predictor(object):
         indices_groups_ = []
         normals_groups_ = []
         original_indices_ = []
+        box_class_names_ = []
         for idx in range(len(indices_groups)):
             if len(indices_groups[idx]) > 0:
                 indices_groups_.append(indices_groups[idx])
                 normals_groups_.append(normals_groups[idx])
                 original_indices_.append(original_indices[idx])
+                box_class_names_.append(box_class_names[idx])
                 pass
             pass
 
         if return_2d_points:
-            return indices_groups_, normals_groups_, original_indices_
+            return indices_groups_, normals_groups_, original_indices_, box_class_names_
         else:
             return indices_groups_, normals_groups_
     
